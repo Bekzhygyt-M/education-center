@@ -1,0 +1,376 @@
+// Prisma schema for the Education Center Management System.
+//
+// Conventions used throughout:
+//  - PostgreSQL enums for every closed value set (Role, AttendanceStatus, ...)
+//  - cuid() string ids, so ids are not guessable or sequential
+//  - explicit @@index on every foreign key and every field used for filtering
+//  - @@unique on every natural key, so duplicates are impossible at the DB level
+//  - onDelete behaviour chosen per relation (see notes on each cascade)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  TEACHER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum LessonStatus {
+  PLANNED
+  HELD
+  CANCELLED
+}
+
+enum WeekDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+// ---------------------------------------------------------------------------
+// Accounts and organisation
+// ---------------------------------------------------------------------------
+
+/// Login account. Admins and teachers only — students have no login.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         Role     @default(TEACHER)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  teacher Teacher?
+
+  @@index([role])
+  @@map("users")
+}
+
+/// A teacher profile attached to a login account.
+model Teacher {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  branchId       String
+  specialization String?
+  isActive       Boolean @default(true)
+  hiredAt        DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch       Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  subjects     TeacherSubject[]
+  groups       Group[]
+  workHours    TeacherWorkHours[]
+  scheduleSlots ScheduleSlot[]
+  lessons      Lesson[]
+  lessonPlans  LessonPlan[]
+
+  @@index([branchId])
+  @@map("teachers")
+}
+
+/// A branch/campus. Only one is used initially, but every location-scoped
+/// entity already carries a branchId so multi-branch needs no rewrite.
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teachers   Teacher[]
+  groups     Group[]
+  classrooms Classroom[]
+
+  @@unique([name])
+  @@map("branches")
+}
+
+// ---------------------------------------------------------------------------
+// Academic catalogue
+// ---------------------------------------------------------------------------
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teachers TeacherSubject[]
+
+  @@map("subjects")
+}
+
+/// Join table: a teacher may teach several subjects.
+model TeacherSubject {
+  teacherId String
+  subjectId String
+  createdAt DateTime @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, subjectId])
+  @@index([subjectId])
+  @@map("teacher_subjects")
+}
+
+model Course {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  description    String?
+  durationWeeks  Int?
+  priceUZS       Int?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  groups        Group[]
+  scheduleSlots ScheduleSlot[]
+
+  @@map("courses")
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  branchId    String
+  courseId    String
+  teacherId   String
+  capacity    Int      @default(15)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  branch        Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  teacher       Teacher       @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  students      GroupStudent[]
+  scheduleSlots ScheduleSlot[]
+  lessons       Lesson[]
+  lessonPlans   LessonPlan[]
+
+  @@index([branchId])
+  @@index([courseId])
+  @@index([teacherId])
+  @@map("groups")
+}
+
+/// A student record. Deliberately has no user relation: students do not log in.
+model Student {
+  id           String    @id @default(cuid())
+  fullName     String
+  phone        String?
+  birthDate    DateTime?
+  enrolledAt   DateTime  @default(now())
+  isActive     Boolean   @default(true)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  groups      GroupStudent[]
+  attendance Attendance[]
+
+  @@index([fullName])
+  @@index([isActive])
+  @@map("students")
+}
+
+/// Join table: a student may be enrolled in several groups.
+/// The composite primary key makes duplicate enrollment impossible.
+model GroupStudent {
+  groupId   String
+  studentId String
+  joinedAt  DateTime @default(now())
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, studentId])
+  @@index([studentId])
+  @@map("group_students")
+}
+
+model Classroom {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  capacity  Int      @default(20)
+  branchId  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch        Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  scheduleSlots ScheduleSlot[]
+
+  @@index([branchId])
+  @@map("classrooms")
+}
+
+/// Declared availability of a teacher, per weekday. Kept separate from
+/// ScheduleSlot because availability is wider than the lessons actually booked.
+model TeacherWorkHours {
+  id        String   @id @default(cuid())
+  teacherId String
+  day       WeekDay
+  startTime String // "HH:mm" 24h, validated at the application layer
+  endTime   String
+  createdAt DateTime @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, day])
+  @@map("teacher_work_hours")
+}
+
+// ---------------------------------------------------------------------------
+// Scheduling and delivery
+// ---------------------------------------------------------------------------
+
+/// The weekly recurring timetable template.
+///
+/// Overlap prevention for teacher / group / classroom is intentionally NOT
+/// encoded here. It is added in a later phase as a PostgreSQL EXCLUDE
+/// constraint on a range column, added by hand in a migration so the schema
+/// file stays portable. (day, startTime, endTime) is already indexed and
+/// modelled the way that constraint will need it.
+model ScheduleSlot {
+  id          String   @id @default(cuid())
+  branchId    String
+  groupId     String
+  teacherId   String
+  courseId    String
+  classroomId String
+  day         WeekDay
+  startTime   String // "HH:mm"
+  endTime     String // "HH:mm"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  teacher   Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Restrict)
+  lessons   Lesson[]
+
+  @@index([teacherId, day])
+  @@index([groupId, day])
+  @@index([classroomId, day])
+  @@index([courseId])
+  @@map("schedule_slots")
+}
+
+/// One dated occurrence of a lesson, materialised from a ScheduleSlot.
+/// Attendance and lesson plans hang off the lesson, because both concern a
+/// specific day rather than the recurring plan.
+model Lesson {
+  id          String       @id @default(cuid())
+  slotId      String?
+  groupId     String
+  teacherId   String
+  date        DateTime     @db.Date
+  status      LessonStatus @default(PLANNED)
+  topic       String?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  slot        ScheduleSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  teacher     Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  attendance  Attendance[]
+  lessonPlan  LessonPlan?
+
+  @@unique([slotId, date])
+  @@index([date])
+  @@index([groupId, date])
+  @@index([teacherId, date])
+  @@map("lessons")
+}
+
+/// One student's presence for one lesson.
+/// @@unique([lessonId, studentId]) makes a duplicate record impossible.
+model Attendance {
+  id         String           @id @default(cuid())
+  lessonId   String
+  studentId  String
+  status     AttendanceStatus @default(PRESENT)
+  arrivedAt  DateTime?        @db.Timestamptz(3)
+  leftAt     DateTime?        @db.Timestamptz(3)
+  note       String?
+  recordedBy String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  lesson  Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, studentId])
+  @@index([studentId])
+  @@index([status])
+  @@map("attendance")
+}
+
+/// A teacher's plan for one lesson. One plan per lesson, owned by the teacher.
+model LessonPlan {
+  id          String   @id @default(cuid())
+  lessonId    String   @unique
+  teacherId   String
+  groupId     String
+  topic       String
+  objectives  String?
+  homework    String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lesson  Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([groupId])
+  @@map("lesson_plans")
+}
+
+/// Key/value application settings, so operational values can be changed
+/// without a code change or a migration. Ships with
+/// attendance.lateThresholdMinutes = 10.
+model Setting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}

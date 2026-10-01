@@ -30,7 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — .env stays local, the .example template is committed
+# Prisma generated client is reproducible from the schema
+/src/generated
+
+# Local secrets — .env stays on disk only. .env.example is tracked.
 .env*
 !.env.example
 

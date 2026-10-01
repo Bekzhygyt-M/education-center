@@ -4,8 +4,16 @@ import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_NAME } from "@/components/layout/navigation";
 import { Brand, SidebarNav } from "@/components/layout/sidebar-nav";
+import { UserMenu } from "@/components/layout/user-menu";
+import type { SessionUser } from "@/server/auth/session";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  user,
+  children,
+}: {
+  user: SessionUser;
+  children: ReactNode;
+}) {
   return (
     <div className="flex min-h-full w-full flex-col md:flex-row">
       {/* Sidebar: persistent on desktop, stacked above content on mobile */}
@@ -24,6 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </h1>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <UserMenu name={user.fullName} email={user.email} role={user.role} />
           </div>
         </header>
 
