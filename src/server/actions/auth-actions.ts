@@ -1,4 +1,4 @@
-import "server-only";
+"use server";
 
 import { AuthError } from "next-auth";
 

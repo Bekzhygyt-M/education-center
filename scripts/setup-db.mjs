@@ -10,7 +10,7 @@
 import { createInterface } from "node:readline/promises";
 import { randomBytes } from "node:crypto";
 import { writeFile } from "node:fs/promises";
-import { stdin, stdout, exit, exitCode } from "node:process";
+import { stdin, stdout, exit } from "node:process";
 
 const DB_NAME = "education_center_dev";
 const DEFAULT_USER = "postgres";
@@ -94,5 +94,5 @@ async function main() {
 
 main().catch((error) => {
   console.error("\nSozlash bajarilmadi:", error instanceof Error ? error.message : error);
-  exitCode = 1;
+  exit(1);
 });
