@@ -10,7 +10,7 @@
 import { createInterface } from "node:readline/promises";
 import { randomBytes } from "node:crypto";
 import { writeFile } from "node:fs/promises";
-import { stdin, stdout } from "node:process";
+import { stdin, stdout, exit, exitCode } from "node:process";
 
 const DB_NAME = "education_center_dev";
 const DEFAULT_USER = "postgres";
@@ -39,7 +39,7 @@ async function main() {
     stdinStream.resume();
     stdinStream.setEncoding("utf8");
 
-    const onData = (char: string) => {
+    const onData = (char) => {
       if (char === "\r" || char === "\n" || char === "\u0004") {
         stdinStream.setRawMode?.(false);
         stdinStream.pause();
@@ -50,7 +50,7 @@ async function main() {
       }
       if (char === "\u0003") {
         // Ctrl+C
-        process.exit(130);
+        exit(130);
       }
       if (char === "\u007f" || char === "\b") {
         value = value.slice(0, -1);
@@ -94,5 +94,5 @@ async function main() {
 
 main().catch((error) => {
   console.error("\nSozlash bajarilmadi:", error instanceof Error ? error.message : error);
-  process.exitCode = 1;
+  exitCode = 1;
 });
