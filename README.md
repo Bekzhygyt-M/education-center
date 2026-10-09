@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ta'lim markazi — boshqaruv tizimi
 
-## Getting Started
+Ta'lim markazlari uchun Uzbek Latin tilidagi ichki tizim: o'qituvchilar, o'quvchilar, guruhlar, xonalar, haftalik jadval, darslar, davomat va dars rejalarini boshqaradi.
 
-First, run the development server:
+## Texnologiyalar
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js 16 App Router va React 19
+- TypeScript, Tailwind CSS, shadcn/Base UI
+- PostgreSQL, Prisma 7 va `@prisma/adapter-pg`
+- Auth.js credentials autentifikatsiyasi va bcrypt
+
+## Lokal sozlash
+
+1. PostgreSQL-da bo'sh `education_center_dev` bazasini yarating.
+2. `.env.example` dan `.env` yarating:
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/education_center_dev?schema=public"
+AUTH_SECRET="uzun-tasodifiy-maxfiy-kalit"
+AUTH_URL="http://localhost:3000"
+AUTH_TRUST_HOST="true"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Client, migratsiyalar va development server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run db:generate
+npm run db:deploy
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`npm run db:migrate` yangi development migratsiyalarini yaratadi; deploy uchun `npm run db:deploy` ishlating.
 
-## Learn More
+## Development seed
 
-To learn more about Next.js, take a look at the following resources:
+Seed faqat nomi `_dev` bilan tugaydigan bo'sh bazaga hamda aniq tasdiq bilan yozadi:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```powershell
+$env:SET_ALLOW_SEED = "1"
+npm run db:seed
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Seed production yoki NewEra bazalarini rad etadi. Uning loginlari faqat lokal demo uchun; shared yoki production muhitida ishlatmang.
 
-## Deploy on Vercel
+## Rollar
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Administrator** barcha modullarni boshqaradi.
+- **O'qituvchi** faqat o'z guruhlari, o'quvchilari, jadvali, darslari, davomati va dars rejalarini boshqaradi.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ruxsat tekshiruvlari server queries va Server Actions ichida bajariladi; UI ni yashirish xavfsizlik chegarasi emas.
+
+## Tekshiruvlar
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+```
+
+## Cheklovlar
+
+Loyiha ichki foydalanish uchun ishlatiladi, ammo audit jurnali, parolni tiklash, e-mail xabarnomalari, backup/monitoring va database darajasidagi schedule exclusion constraint hali yo'q. Shuning uchun uni qo'shimcha operatsion xavfsizliksiz production-ready deb hisoblamang.

@@ -7,8 +7,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  emailSchema,
+  entityNameSchema,
   fullNameSchema,
   loginSchema,
+  passwordSchema,
   phoneSchema,
   timeSchema,
 } from "../src/server/validation/auth";
@@ -67,4 +70,41 @@ test("fullNameSchema rejects digits", () => {
 
 test("fullNameSchema rejects a single character", () => {
   assert.equal(fullNameSchema.safeParse("A").success, false);
+});
+
+test("emailSchema accepts and normalises a mixed-case address", () => {
+  const result = emailSchema.safeParse("  Teacher@Markaz.UZ ");
+  assert.equal(result.success, true);
+  if (result.success) assert.equal(result.data, "teacher@markaz.uz");
+});
+
+test("emailSchema rejects a value with no @", () => {
+  assert.equal(emailSchema.safeParse("not-an-email").success, false);
+});
+
+test("emailSchema rejects an empty string", () => {
+  assert.equal(emailSchema.safeParse("").success, false);
+});
+
+test("passwordSchema rejects a password shorter than 8 characters", () => {
+  assert.equal(passwordSchema.safeParse("short1").success, false);
+});
+
+test("passwordSchema accepts an 8-character password", () => {
+  assert.equal(passwordSchema.safeParse("longenough").success, true);
+});
+
+test("entityNameSchema accepts names with digits (course/group/classroom)", () => {
+  assert.equal(entityNameSchema.safeParse("IELTS 7.0").success, true);
+  assert.equal(entityNameSchema.safeParse("A-203").success, true);
+});
+
+test("entityNameSchema rejects a single character", () => {
+  assert.equal(entityNameSchema.safeParse("A").success, false);
+});
+
+test("entityNameSchema trims surrounding whitespace", () => {
+  const result = entityNameSchema.safeParse("  Front Desk  ");
+  assert.equal(result.success, true);
+  if (result.success) assert.equal(result.data, "Front Desk");
 });

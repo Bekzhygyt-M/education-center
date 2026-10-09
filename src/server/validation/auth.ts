@@ -19,18 +19,6 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
-export const createUserSchema = z.object({
-  fullName: z.string().trim().min(2, "F.I.O. kamida 2 ta belgidan iborat bo'lishi kerak").max(120),
-  email: z.string().trim().toLowerCase().email("Elektron pochta noto'g'ri"),
-  phone: phoneSchema.optional().or(z.literal("")),
-  password: z
-    .string()
-    .min(8, "Parol kamida 8 ta belgidan iborat bo'lishi kerak")
-    .max(200),
-});
-
-export type CreateUserInput = z.infer<typeof createUserSchema>;
-
 /** Uzbek Latin letters plus space, apostrophe and hyphen. */
 export const fullNameSchema = z
   .string()
@@ -42,6 +30,38 @@ export const fullNameSchema = z
     "Faqat harflar, bo'shliq, apostrof va chiziqcha qo'llanadi",
   );
 
+/** Account email: trimmed and lower-cased so lookups and uniqueness checks are case-insensitive. */
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email("Elektron pochta noto'g'ri");
+
+export const passwordSchema = z
+  .string()
+  .min(8, "Parol kamida 8 ta belgidan iborat bo'lishi kerak")
+  .max(200);
+
+export const createUserSchema = z.object({
+  fullName: fullNameSchema,
+  email: emailSchema,
+  phone: phoneSchema.optional().or(z.literal("")),
+  password: passwordSchema,
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+
 export const timeSchema = z
   .string()
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Vaqt HH:mm formatida bo'lishi kerak");
+
+/**
+ * Name of a non-person entity (course, group, classroom). Deliberately
+ * broader than fullNameSchema — these names may contain digits, e.g. "IELTS 7.0"
+ * or "A-203" — so it only enforces a sane length, not a letters-only shape.
+ */
+export const entityNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Nom kamida 2 ta belgidan iborat bo'lishi kerak")
+  .max(120, "Nom juda uzun");
