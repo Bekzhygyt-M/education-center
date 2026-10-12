@@ -15,7 +15,9 @@ type ActionState = { error?: string; success?: string };
 const value = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
 const optional = (data: FormData, key: string) => value(data, key) || null;
 const invalidate = (...paths: string[]) => paths.forEach((path) => revalidatePath(path));
-const fail = (error: string): ActionState => ({ error });
+const fail = (error: string): ActionState => {
+  return { error };
+};
 
 /**
  * Validates one raw form value against a Zod schema, returning either the
