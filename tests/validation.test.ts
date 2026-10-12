@@ -1,8 +1,3 @@
-/**
- * Unit tests for the Zod validation schemas.
- *
- * Run with:  npx tsx --test tests/validation.test.ts
- */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -17,18 +12,31 @@ import {
 } from "../src/server/validation/auth";
 
 test("loginSchema rejects an invalid email", () => {
-  const result = loginSchema.safeParse({ email: "not-an-email", password: "secret" });
+  const result = loginSchema.safeParse({
+    email: "not-an-email",
+    password: "secret",
+  });
+
   assert.equal(result.success, false);
 });
 
 test("loginSchema rejects an empty password", () => {
-  const result = loginSchema.safeParse({ email: "a@b.uz", password: "" });
+  const result = loginSchema.safeParse({
+    email: "a@b.uz",
+    password: "",
+  });
+
   assert.equal(result.success, false);
 });
 
 test("loginSchema trims and accepts valid credentials", () => {
-  const result = loginSchema.safeParse({ email: "  admin@markaz.uz ", password: "secret1" });
+  const result = loginSchema.safeParse({
+    email: "  admin@markaz.uz ",
+    password: "secret1",
+  });
+
   assert.equal(result.success, true);
+
   if (result.success) {
     assert.equal(result.data.email, "admin@markaz.uz");
   }
@@ -59,6 +67,22 @@ test("timeSchema accepts HH:mm", () => {
   assert.equal(timeSchema.safeParse("23:59").success, true);
 });
 
+test("timeSchema accepts midnight", () => {
+  assert.equal(timeSchema.safeParse("00:00").success, true);
+});
+
+test("timeSchema rejects 24:00", () => {
+  assert.equal(timeSchema.safeParse("24:00").success, false);
+});
+
+test("timeSchema rejects minutes above 59", () => {
+  assert.equal(timeSchema.safeParse("12:60").success, false);
+});
+
+test("timeSchema rejects a single-digit hour", () => {
+  assert.equal(timeSchema.safeParse("9:30").success, false);
+});
+
 test("fullNameSchema accepts Uzbek Latin names", () => {
   assert.equal(fullNameSchema.safeParse("Dilnoza Rahimova").success, true);
   assert.equal(fullNameSchema.safeParse("Madina Yo'ldosheva").success, true);
@@ -74,8 +98,12 @@ test("fullNameSchema rejects a single character", () => {
 
 test("emailSchema accepts and normalises a mixed-case address", () => {
   const result = emailSchema.safeParse("  Teacher@Markaz.UZ ");
+
   assert.equal(result.success, true);
-  if (result.success) assert.equal(result.data, "teacher@markaz.uz");
+
+  if (result.success) {
+    assert.equal(result.data, "teacher@markaz.uz");
+  }
 });
 
 test("emailSchema rejects a value with no @", () => {
@@ -105,6 +133,10 @@ test("entityNameSchema rejects a single character", () => {
 
 test("entityNameSchema trims surrounding whitespace", () => {
   const result = entityNameSchema.safeParse("  Front Desk  ");
+
   assert.equal(result.success, true);
-  if (result.success) assert.equal(result.data, "Front Desk");
+
+  if (result.success) {
+    assert.equal(result.data, "Front Desk");
+  }
 });
